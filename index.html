@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tính chỉ số BMI — M-Software</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; background: #f4f6f8; color: #222; }
+  main { max-width: 520px; margin: 40px auto; padding: 0 16px; }
+  h1 { font-size: 1.6rem; margin-bottom: 4px; }
+  p.muted { color: #666; margin-top: 0; }
+  form { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  label { display: block; font-weight: 600; margin: 14px 0 6px; }
+  label:first-child { margin-top: 0; }
+  input, select { width: 100%; padding: 10px; font-size: 1rem; border: 1px solid #ccc; border-radius: 8px; }
+  input:focus, select:focus { outline: 2px solid #2a7fff; border-color: #2a7fff; }
+  .error { color: #c0392b; font-size: .9rem; min-height: 1.2em; margin-top: 4px; }
+  button { width: 100%; margin-top: 16px; padding: 12px; font-size: 1.05rem; font-weight: 700; color: #fff; background: #2a7fff; border: none; border-radius: 8px; cursor: pointer; }
+  button:hover { background: #1a66d6; }
+  #result { display: none; background: #fff; margin-top: 20px; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.08); text-align: center; }
+  #result .bmi { font-size: 2.6rem; font-weight: 800; margin: 8px 0; }
+  #result .category { font-size: 1.25rem; font-weight: 700; }
+  #result .note { color: #666; font-size: .9rem; margin-top: 12px; }
+  .under { color: #2a7fff; } .normal { color: #1e9e4f; } .over { color: #e67e22; } .obese { color: #c0392b; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: .95rem; background: #fff; border-radius: 12px; overflow: hidden; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
+  th { background: #eef3fb; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Tính chỉ số BMI</h1>
+  <p class="muted">Nhập thông tin của bạn, hệ thống tính BMI theo công thức kg/m² và phân loại theo thang WHO.</p>
+  <form id="bmi-form" novalidate>
+    <label for="height">Chiều cao (cm)</label>
+    <input id="height" name="height" type="number" inputmode="decimal" min="50" max="250" step="any" placeholder="Ví dụ: 170" required>
+    <div class="error" id="err-height"></div>
+
+    <label for="weight">Cân nặng (kg)</label>
+    <input id="weight" name="weight" type="number" inputmode="decimal" min="2" max="300" step="any" placeholder="Ví dụ: 65" required>
+    <div class="error" id="err-weight"></div>
+
+    <label for="age">Tuổi</label>
+    <input id="age" name="age" type="number" inputmode="numeric" min="1" max="120" step="1" placeholder="Ví dụ: 28" required>
+    <div class="error" id="err-age"></div>
+
+    <label for="gender">Giới tính</label>
+    <select id="gender" name="gender" required>
+      <option value="">— Chọn giới tính —</option>
+      <option value="Nam">Nam</option>
+      <option value="Nữ">Nữ</option>
+      <option value="Khác">Khác</option>
+    </select>
+    <div class="error" id="err-gender"></div>
+
+    <button type="submit">Tính BMI</button>
+  </form>
+
+  <section id="result" aria-live="polite">
+    <div>Kết quả của bạn</div>
+    <div class="bmi" id="bmi-value"></div>
+    <div class="category" id="bmi-category"></div>
+    <div id="bmi-detail"></div>
+    <p class="note">BMI chỉ mang tính tham khảo. Thang phân loại WHO áp dụng cho người trưởng thành; với trẻ em và một số trường hợp đặc biệt, hãy tham khảo ý kiến chuyên gia y tế.</p>
+  </section>
+
+  <table aria-label="Thang phân loại WHO">
+    <tr><th>BMI</th><th>Phân loại (WHO)</th></tr>
+    <tr><td>Dưới 18,5</td><td>Thiếu cân</td></tr>
+    <tr><td>18,5 – 24,9</td><td>Bình thường</td></tr>
+    <tr><td>25,0 – 29,9</td><td>Thừa cân</td></tr>
+    <tr><td>30,0 trở lên</td><td>Béo phì</td></tr>
+  </table>
+</main>
+<script>
+  // Thang WHO: <18.5 thiếu cân; 18.5–24.9 bình thường; 25–29.9 thừa cân; >=30 béo phì.
+  function classify(bmi) {
+    if (bmi < 18.5) return { label: "Thiếu cân", cls: "under" };
+    if (bmi < 25)   return { label: "Bình thường", cls: "normal" };
+    if (bmi < 30)   return { label: "Thừa cân", cls: "over" };
+    return { label: "Béo phì", cls: "obese" };
+  }
+
+  document.getElementById("bmi-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var fields = [
+      { id: "height", name: "Chiều cao", min: 50, max: 250, unit: "cm" },
+      { id: "weight", name: "Cân nặng", min: 2, max: 300, unit: "kg" },
+      { id: "age",    name: "Tuổi",      min: 1, max: 120, unit: "" }
+    ];
+    var ok = true, values = {};
+    fields.forEach(function (f) {
+      var el = document.getElementById(f.id);
+      var err = document.getElementById("err-" + f.id);
+      var v = el.value.trim();
+      err.textContent = "";
+      if (v === "" || isNaN(Number(v))) {
+        err.textContent = "Vui lòng nhập " + f.name.toLowerCase() + " là một con số.";
+        ok = false; return;
+      }
+      var num = Number(v);
+      if (num < f.min || num > f.max) {
+        err.textContent = f.name + " phải từ " + f.min + " đến " + f.max + (f.unit ? " " + f.unit : "") + ".";
+        ok = false; return;
+      }
+      values[f.id] = num;
+    });
+    var genderEl = document.getElementById("gender");
+    var genderErr = document.getElementById("err-gender");
+    genderErr.textContent = "";
+    if (!genderEl.value) {
+      genderErr.textContent = "Vui lòng chọn giới tính.";
+      ok = false;
+    }
+    var result = document.getElementById("result");
+    if (!ok) { result.style.display = "none"; return; }
+
+    var heightM = values.height / 100;
+    var bmi = values.weight / (heightM * heightM);
+    var rounded = Math.round(bmi * 10) / 10;
+    var c = classify(bmi);
+    document.getElementById("bmi-value").textContent = rounded.toFixed(1);
+    var cat = document.getElementById("bmi-category");
+    cat.textContent = c.label;
+    cat.className = "category " + c.cls;
+    document.getElementById("bmi-detail").textContent =
+      "Chiều cao " + values.height + " cm, cân nặng " + values.weight +
+      " kg, " + values.age + " tuổi, giới tính " + genderEl.value + ".";
+    result.style.display = "block";
+  });
+</script>
+</body>
+</html>
