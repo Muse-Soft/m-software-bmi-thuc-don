@@ -22,6 +22,18 @@
   #result .bmi { font-size: 2.6rem; font-weight: 800; margin: 8px 0; }
   #result .category { font-size: 1.25rem; font-weight: 700; }
   #result .note { color: #666; font-size: .9rem; margin-top: 12px; }
+
+  #calorie { margin-top: 16px; padding: 14px; background: #eef3fb; border-radius: 10px; }
+  #calorie .kcal { font-size: 1.5rem; font-weight: 800; }
+  #menu { display: none; background: #fff; margin-top: 20px; padding: 20px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  #menu h2 { margin-top: 0; font-size: 1.2rem; }
+  .meal { border: 1px solid #eee; border-radius: 10px; padding: 12px 14px; margin-top: 12px; text-align: left; }
+  .meal-head { display: flex; justify-content: space-between; font-weight: 700; }
+  .meal ul { margin: 8px 0 0; padding-left: 18px; color: #444; }
+  .meal-total { font-weight: 700; margin-top: 14px; text-align: center; }
+  #bmi-explained { background: #f8f8f8; margin-top: 24px; padding: 20px; border-radius: 12px; font-size: .95rem; }
+  #bmi-explained h2 { margin-top: 0; font-size: 1.2rem; }
+  #bmi-explained .warning { font-weight: 700; }
   .under { color: #2a7fff; } .normal { color: #1e9e4f; } .over { color: #e67e22; } .obese { color: #c0392b; }
   table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: .95rem; background: #fff; border-radius: 12px; overflow: hidden; }
   th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
@@ -31,7 +43,7 @@
 <body>
 <main>
   <h1>Tính chỉ số BMI</h1>
-  <p class="muted">Nhập thông tin của bạn, hệ thống tính BMI theo công thức kg/m² và phân loại theo thang WHO.</p>
+  <p class="muted">Nhập thông tin của bạn để tính BMI, xem mức calo gợi ý mỗi ngày và thực đơn mẫu cho một ngày.</p>
   <form id="bmi-form" novalidate>
     <label for="height">Chiều cao (cm)</label>
     <input id="height" name="height" type="number" inputmode="decimal" min="50" max="250" step="any" placeholder="Ví dụ: 170" required>
@@ -62,7 +74,19 @@
     <div class="bmi" id="bmi-value"></div>
     <div class="category" id="bmi-category"></div>
     <div id="bmi-detail"></div>
+    <div id="calorie">
+      <div>Nhu cầu calo gợi ý mỗi ngày</div>
+      <div class="kcal" id="calorie-value"></div>
+      <div id="calorie-basis" class="note" style="margin-top:4px"></div>
+    </div>
     <p class="note">BMI chỉ mang tính tham khảo. Thang phân loại WHO áp dụng cho người trưởng thành; với trẻ em và một số trường hợp đặc biệt, hãy tham khảo ý kiến chuyên gia y tế.</p>
+  </section>
+
+  <section id="menu" aria-live="polite">
+    <h2>Thực đơn mẫu cho một ngày</h2>
+    <p class="muted" style="margin-top:0">Gợi ý theo mức calo trên — bạn có thể thay bằng món tương đương.</p>
+    <div id="menu-meals"></div>
+    <div class="meal-total" id="menu-total"></div>
   </section>
 
   <table aria-label="Thang phân loại WHO">
@@ -72,6 +96,13 @@
     <tr><td>25,0 – 29,9</td><td>Thừa cân</td></tr>
     <tr><td>30,0 trở lên</td><td>Béo phì</td></tr>
   </table>
+
+  <section id="bmi-explained">
+    <h2>BMI là gì?</h2>
+    <p>BMI (Body Mass Index — chỉ số khối cơ thể) được tính bằng cân nặng (kg) chia cho bình phương chiều cao (m). Đây là cách đánh giá nhanh thể trạng: BMI giúp nhận biết bạn đang thiếu cân, bình thường, thừa cân hay béo phì, nhưng không đo trực tiếp lượng mỡ trong cơ thể và không phản ánh cơ bắp, tuổi tác hay tình trạng sức khỏe riêng.</p>
+    <p class="warning">⚠️ Lưu ý: kết quả trên trang này chỉ để tham khảo, không thay thế tư vấn của bác sĩ hay chuyên gia dinh dưỡng.</p>
+    <p>Người tập gym nhiều cơ bắp, phụ nữ mang thai, trẻ em hoặc người đang có bệnh lý nên hỏi ý kiến bác sĩ trước khi áp dụng gợi ý calo hay thực đơn. Nếu BMI ngoài khoảng bình thường và kéo dài, bạn nên đi khám để được tư vấn phù hợp.</p>
+  </section>
 </main>
 <script>
   // Thang WHO: <18.5 thiếu cân; 18.5–24.9 bình thường; 25–29.9 thừa cân; >=30 béo phì.
@@ -80,6 +111,73 @@
     if (bmi < 25)   return { label: "Bình thường", cls: "normal" };
     if (bmi < 30)   return { label: "Thừa cân", cls: "over" };
     return { label: "Béo phì", cls: "obese" };
+  }
+
+
+  // Calo gợi ý (TEC-75): BMR theo Mifflin-St Jeor, nhân hệ số vận động nhẹ 1,4
+  // rồi điều chỉnh theo phân loại BMI; không thấp hơn BMR. Giới tính "Khác"
+  // lấy trung bình hai công thức Nam/Nữ. Hệ số 1,4 là giả định mức vận động
+  // nhẹ — trang ghi rõ con số chưa tính mức vận động chi tiết.
+  function calorieSuggestion(w, h, age, gender, category) {
+    var bmrMale = 10 * w + 6.25 * h - 5 * age + 5;
+    var bmrFemale = 10 * w + 6.25 * h - 5 * age - 161;
+    var bmr = gender === "Nam" ? bmrMale : gender === "Nữ" ? bmrFemale : (bmrMale + bmrFemale) / 2;
+    var tdee = bmr * 1.4;
+    var adj = category === "Thiếu cân" ? 300 : category === "Thừa cân" ? -300 : category === "Béo phì" ? -500 : 0;
+    var target = Math.max(bmr, tdee + adj);
+    return Math.round(target / 50) * 50; // làm tròn tới 50 kcal
+  }
+
+  // Thực đơn mẫu 1 ngày: 3 bữa chính, tỉ lệ sáng 30% / trưa 35% / tối 35%.
+  var MENUS = {
+    "Thiếu cân": [
+      { meal: "Sáng", dishes: ["Cháo thịt bằm + trứng gà", "Sữa đậu nành có đường"] },
+      { meal: "Trưa", dishes: ["Cơm trắng + thịt kho trứng", "Canh rau + trái cây tráng miệng"] },
+      { meal: "Tối", dishes: ["Cơm trắng + cá kho", "Rau luộc + sữa chua"] }
+    ],
+    "Bình thường": [
+      { meal: "Sáng", dishes: ["Phở gà"] },
+      { meal: "Trưa", dishes: ["Cơm trắng + gà luộc", "Canh bí + rau luộc"] },
+      { meal: "Tối", dishes: ["Cơm trắng + cá hấp", "Rau xào + canh rau"] }
+    ],
+    "Thừa cân": [
+      { meal: "Sáng", dishes: ["Yến mạch + sữa không đường", "Trái cây"] },
+      { meal: "Trưa", dishes: ["Cơm gạo lứt + ức gà", "Rau luộc + canh rau"] },
+      { meal: "Tối", dishes: ["Salad rau + cá nướng", "Canh rau"] }
+    ],
+    "Béo phì": [
+      { meal: "Sáng", dishes: ["Trứng luộc + bánh mì nguyên cám", "Rau sống"] },
+      { meal: "Trưa", dishes: ["Cơm gạo lứt (ít) + cá kho", "Rau luộc"] },
+      { meal: "Tối", dishes: ["Canh rau + thịt nạc luộc", "Rau luộc"] }
+    ]
+  };
+  var MEAL_SHARE = [0.30, 0.35, 0.35];
+
+  function renderMenu(category, target) {
+    var box = document.getElementById("menu-meals");
+    box.innerHTML = "";
+    MENUS[category].forEach(function (m, i) {
+      var kcal = Math.round(target * MEAL_SHARE[i] / 10) * 10;
+      var div = document.createElement("div");
+      div.className = "meal";
+      var head = document.createElement("div");
+      head.className = "meal-head";
+      head.appendChild(document.createTextNode(m.meal));
+      var k = document.createElement("span");
+      k.textContent = "~" + kcal + " kcal";
+      head.appendChild(k);
+      div.appendChild(head);
+      var ul = document.createElement("ul");
+      m.dishes.forEach(function (d) {
+        var li = document.createElement("li");
+        li.textContent = d;
+        ul.appendChild(li);
+      });
+      div.appendChild(ul);
+      box.appendChild(div);
+    });
+    document.getElementById("menu-total").textContent = "Tổng cả ngày: ~" + target + " kcal";
+    document.getElementById("menu").style.display = "block";
   }
 
   document.getElementById("bmi-form").addEventListener("submit", function (e) {
@@ -114,7 +212,7 @@
       ok = false;
     }
     var result = document.getElementById("result");
-    if (!ok) { result.style.display = "none"; return; }
+    if (!ok) { result.style.display = "none"; document.getElementById("menu").style.display = "none"; return; }
 
     var heightM = values.height / 100;
     var bmi = values.weight / (heightM * heightM);
@@ -124,6 +222,14 @@
     var cat = document.getElementById("bmi-category");
     cat.textContent = c.label;
     cat.className = "category " + c.cls;
+    var kcal = calorieSuggestion(values.weight, values.height, values.age, genderEl.value, c.label);
+    document.getElementById("calorie-value").textContent = "~" + kcal + " kcal";
+    document.getElementById("calorie-basis").textContent =
+      "Tính từ chỉ số BMR (công thức Mifflin-St Jeor) với mức vận động nhẹ; " +
+      "phân loại " + c.label.toLowerCase() + " được điều chỉnh " +
+      (c.label === "Thiếu cân" ? "+300 kcal" : c.label === "Thừa cân" ? "-300 kcal" : c.label === "Béo phì" ? "-500 kcal" : "giữ nguyên") +
+      ". Con số mang tính tham khảo, chưa tính mức vận động chi tiết.";
+    renderMenu(c.label, kcal);
     document.getElementById("bmi-detail").textContent =
       "Chiều cao " + values.height + " cm, cân nặng " + values.weight +
       " kg, " + values.age + " tuổi, giới tính " + genderEl.value + ".";
