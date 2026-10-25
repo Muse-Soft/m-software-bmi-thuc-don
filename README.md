@@ -4,7 +4,6 @@ Trang giới thiệu (landing page) **tĩnh** — trang giới thiệu cho Tính
 
 > Mọi tên, số điện thoại, địa chỉ và số liệu trên trang đều là **dữ liệu mẫu**. Giá hiển thị là **giá mẫu**. Biểu mẫu (nếu có) chỉ là giao diện minh họa: không gửi dữ liệu đi đâu và không có backend.
 
-**Demo trực tuyến:** https://m-software-bmi-thuc-don.genalpha.dev
 **Giấy phép:** [MIT](LICENSE) © M-Software
 
 ## Cách xem
